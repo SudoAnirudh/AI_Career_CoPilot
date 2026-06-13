@@ -1,0 +1,322 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 3rem;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background-color: #ffffff;
+  border: 1px solid var(--panel-border);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+}
+
+.card:hover {
+  border-color: var(--panel-border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.iconWrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.blue {
+  background-color: #f0f9ff;
+  color: #0284c7;
+}
+
+.purple {
+  background-color: #e0e7ff;
+  color: var(--color-primary);
+}
+
+.green {
+  background-color: #ecfdf5;
+  color: var(--score-high);
+}
+
+.pink {
+  background-color: #fdf2f8;
+  color: #db2777;
+}
+
+.cardGrowth {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background-color: #f1f5f9;
+  padding: 0.25rem 0.5rem;
+  border-radius: 20px;
+}
+
+.cardBody h3 {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+}
+
+.cardBody p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.splitSection {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 1.5rem;
+}
+
+.leftPanel, .rightPanel {
+  background-color: #ffffff;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.panelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 1.25rem;
+}
+
+.panelHeader h2 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.panelHeader p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.jobsList, .skillsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 280px;
+}
+
+.jobItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem;
+  background-color: #f8fafc;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+  transition: var(--transition-smooth);
+}
+
+.jobItem:hover {
+  background-color: #f1f5f9;
+  border-color: var(--panel-border-hover);
+}
+
+.jobInfo h4 {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.jobInfo p {
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  background-color: var(--color-primary-glow);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.jobActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.matchBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.viewLink {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: var(--transition-smooth);
+}
+
+.viewLink:hover {
+  color: var(--color-primary);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--text-muted);
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.emptyIcon {
+  color: var(--text-muted);
+  opacity: 0.4;
+  margin-bottom: 0.5rem;
+}
+
+.emptyState h3 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.emptyState p {
+  font-size: 0.85rem;
+  max-width: 300px;
+}
+
+.perfectMatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  color: var(--score-high);
+  gap: 0.75rem;
+  flex-grow: 1;
+}
+
+.checkIcon {
+  color: var(--score-high);
+}
+
+.perfectMatch h3 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.perfectMatch p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  max-width: 250px;
+}
+
+.gapsGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.gapCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gapHeader {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.gapName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gapCount {
+  color: var(--text-secondary);
+}
+
+.gapProgressContainer {
+  height: 6px;
+  background-color: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gapProgressBar {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 3px;
+}
+
+.resumeOptimizeBanner {
+  background-color: #f5f3ff;
+  border: 1px dashed #c084fc;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+}
+
+.resumeOptimizeBanner p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+}
+
+@media (max-width: 1200px) {
+  .splitSection {
+    grid-template-columns: 1fr;
+  }
+}

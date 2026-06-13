@@ -1,0 +1,351 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 3rem;
+}
+
+.pageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pageHeader h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.025em;
+}
+
+.pageHeader p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.card {
+  background-color: #ffffff;
+  border: 1px solid var(--panel-border);
+  padding: 1.5rem 2rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+}
+
+.card:hover {
+  border-color: var(--panel-border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.widgetHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.widgetHeader h4 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.cyanIcon {
+  color: #0284c7;
+}
+
+.purpleIcon {
+  color: var(--color-primary);
+}
+
+.emeraldIcon {
+  color: var(--score-high);
+}
+
+.widgetBody h2 {
+  font-size: 2rem;
+  font-weight: 800;
+  font-family: var(--font-display);
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.03em;
+}
+
+.widgetBody p {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.positive {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--score-high) !important;
+  font-weight: 600;
+}
+
+.splitSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.funnelCard, .skillsCard {
+  background-color: #ffffff;
+  border: 1px solid var(--panel-border);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.funnelCard h3, .skillsCard h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.sectionSubtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: -0.5rem;
+  margin-bottom: 1rem;
+}
+
+.funnelBars, .skillsDistribution {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-height: 200px;
+  justify-content: center;
+}
+
+.funnelRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.stageLabel {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.825rem;
+}
+
+.stageName {
+  font-weight: 600;
+  text-transform: capitalize;
+  color: var(--text-primary);
+}
+
+.stageCount {
+  color: var(--text-secondary);
+}
+
+.barContainer {
+  height: 8px;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 1s ease-in-out;
+}
+
+.emptyChart {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  padding: 3rem 1.5rem;
+}
+
+.gapsList {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.gapRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.gapInfo {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.825rem;
+}
+
+.gapTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.gapBadge {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background-color: #f1f5f9;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--panel-border);
+}
+
+.gapBarBg {
+  height: 6px;
+  background-color: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gapBarFill {
+  height: 100%;
+  background-color: var(--color-primary);
+  border-radius: 3px;
+}
+
+/* Report Card styling */
+.reportCard {
+  background-color: #ffffff;
+  border: 1px solid var(--panel-border);
+  padding: 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.reportHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-primary);
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 1rem;
+}
+
+.reportHeader h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+}
+
+.reportContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.adviceBox {
+  background: #f5f3ff;
+  border: 1px solid #ddd6fe;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+}
+
+.adviceBox h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.adviceBox p {
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.analysisGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.analysisCol h5 {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.analysisCol ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.analysisCol li {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  position: relative;
+  padding-left: 1rem;
+}
+
+.analysisCol li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.warnItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--score-medium) !important;
+  padding-left: 0 !important;
+}
+
+.warnItem::before {
+  display: none !important;
+}
+
+.warnItem span {
+  font-size: 0.85rem;
+}
+
+.reportLoading {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 2rem 0;
+}
+
+.spin {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1024px) {
+  .splitSection, .analysisGrid {
+    grid-template-columns: 1fr;
+  }
+}

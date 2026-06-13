@@ -1,0 +1,210 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 3rem;
+}
+
+.pageHeader h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.025em;
+}
+
+.pageHeader p {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.splitSection {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.configPanel, .profilePanel {
+  background-color: #ffffff;
+  border: 1px solid var(--panel-border);
+  padding: 2.25rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.panelTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--color-primary);
+  border-bottom: 1px solid var(--panel-border);
+  padding-bottom: 1rem;
+}
+
+.panelTitleGroup h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.inputWrapper {
+  display: flex;
+  position: relative;
+}
+
+.inputWrapper input {
+  width: 100%;
+  padding-right: 2.75rem;
+}
+
+.eyeBtn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.eyeBtn:hover {
+  color: var(--text-primary);
+}
+
+.helpText {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.profileDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.profileMetaRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px dashed var(--panel-border);
+}
+
+.metaLabel {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.activeBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--score-high);
+  background-color: #ecfdf5;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #a7f3d0;
+}
+
+.skillsBox, .experienceSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.skillsBox h4, .experienceSummary h4 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.skillsCloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 180px;
+  overflow-y: auto;
+  background-color: #f8fafc;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--panel-border);
+}
+
+.skillTag {
+  font-size: 0.75rem;
+  color: var(--color-primary);
+  background-color: var(--color-primary-glow);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #ddd6fe;
+  font-weight: 500;
+}
+
+.experienceSummary p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.noProfile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  height: 250px;
+  color: var(--text-muted);
+  gap: 0.75rem;
+}
+
+.cloudIcon {
+  color: var(--text-muted);
+  opacity: 0.3;
+}
+
+.noProfile h4 {
+  font-size: 1rem;
+  color: var(--text-secondary);
+}
+
+.noProfile p {
+  font-size: 0.8rem;
+  max-width: 250px;
+  line-height: 1.4;
+}
+
+@media (max-width: 1024px) {
+  .splitSection {
+    grid-template-columns: 1fr;
+  }
+}
