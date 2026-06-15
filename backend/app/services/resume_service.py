@@ -150,6 +150,9 @@ def parse_resume_fallback(raw_text: str) -> dict:
 
 def process_and_save_resume(db: Session, user_id: str, pdf_bytes: bytes, file_name: str) -> Profile:
     """Process a PDF resume, build structured profile, and store it in database."""
+    import os
+    import uuid
+    
     # Get user
     user = db.query(User).filter(User.clerk_id == user_id).first()
     if not user:
@@ -165,8 +168,25 @@ def process_and_save_resume(db: Session, user_id: str, pdf_bytes: bytes, file_na
     latest_profile = db.query(Profile).filter(Profile.user_id == user.id).order_by(Profile.version.desc()).first()
     next_version = (latest_profile.version + 1) if latest_profile else 1
     
+    profile_id = uuid.uuid4()
+    
+    # Save PDF to disk
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "resumes")
+    os.makedirs(static_dir, exist_ok=True)
+    file_path = os.path.join(static_dir, f"{profile_id}.pdf")
+    
+    try:
+        with open(file_path, "wb") as f:
+            f.write(pdf_bytes)
+        resume_url = f"/static/resumes/{profile_id}.pdf"
+        logger.info(f"Saved resume PDF for profile {profile_id} to {file_path}")
+    except Exception as e:
+        logger.error(f"Failed to save resume PDF to disk: {e}")
+        resume_url = file_name
+        
     # Save new profile
     new_profile = Profile(
+        id=profile_id,
         user_id=user.id,
         version=next_version,
         raw_text=raw_text,
@@ -175,7 +195,7 @@ def process_and_save_resume(db: Session, user_id: str, pdf_bytes: bytes, file_na
         education=profile_data.get("education", []),
         experience=profile_data.get("experience", []),
         certifications=profile_data.get("certifications", []),
-        resume_url=file_name,  # Just saving filename locally for this setup
+        resume_url=resume_url,
         is_active=True
     )
     
@@ -183,3 +203,4 @@ def process_and_save_resume(db: Session, user_id: str, pdf_bytes: bytes, file_na
     db.commit()
     db.refresh(new_profile)
     return new_profile
+

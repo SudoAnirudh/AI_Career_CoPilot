@@ -1,5 +1,7 @@
 import logging
 import math
+import json
+import re
 from sqlalchemy.orm import Session
 from app.models import Job, Profile
 from app.services.llm import call_nvidia_nim
@@ -43,7 +45,6 @@ def re_tokenize(text: str) -> list:
     """Utility to extract words from text."""
     return re.findall(r'\w+', text)
 
-import re
 
 def calculate_skills_match(profile_skills: dict, job_skills: list) -> float:
     """Calculate ratio of job skills found in candidate profile."""

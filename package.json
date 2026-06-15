@@ -6,7 +6,7 @@
     "install:all": "npm install --prefix frontend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:backend": "cd backend && ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8009",
-    "dev:celery": "cd backend && ./venv/bin/celery -A app.worker.celery_app worker --loglevel=info",
+    "dev:celery": "cd backend && ./venv/bin/celery -A app.worker.celery_app worker --loglevel=info --pool=solo",
     "dev": "npx concurrently --kill-others \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:celery\"",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"

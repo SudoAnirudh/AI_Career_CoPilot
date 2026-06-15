@@ -149,7 +149,7 @@ const Dashboard: React.FC = () => {
                         className={styles.matchBadge}
                         style={{ borderColor: scoreColor, color: scoreColor }}
                       >
-                        {job.match_score || 0}% Match
+                        {Math.round(job.match_score || 0)}% Match
                       </div>
                       <Link href={`/jobs`} className={styles.viewLink}>
                         <span>Explore</span>

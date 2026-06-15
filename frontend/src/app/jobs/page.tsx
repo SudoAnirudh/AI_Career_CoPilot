@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useApp, Job, Contact } from "../../context/AppContext";
 
 import { 
@@ -19,6 +20,7 @@ import {
 import styles from "./page.module.css";
 
 const JobsPage: React.FC = () => {
+  const router = useRouter();
   const { 
     jobs, 
     activeProfile, 
@@ -26,7 +28,8 @@ const JobsPage: React.FC = () => {
     getContacts,
     generateOutreach,
     applications,
-    createApplication
+    createApplication,
+    messages
   } = useApp();
 
   const [search, setSearch] = useState("");
@@ -157,7 +160,7 @@ const JobsPage: React.FC = () => {
             </div>
           ) : (
             filteredJobs.map((job) => {
-              const score = job.match_score || 0;
+              const score = Math.round(job.match_score || 0);
               const isSelected = selectedJob?.id === job.id;
               const isAlreadyTracked = applications.some(app => app.job_id === job.id);
               
@@ -305,33 +308,52 @@ const JobsPage: React.FC = () => {
                   </div>
                 ) : (
                   <div className={styles.contactsList}>
-                    {contacts.map((contact) => (
-                      <div key={contact.id} className={styles.contactItem}>
-                        <div className={styles.contactInfo}>
-                          <h4>{contact.name}</h4>
-                          <p>{contact.title}</p>
-                          {contact.email && (
-                            <span className={styles.contactEmail}>
-                              {contact.email} ({Math.round((contact.email_confidence || 0) * 100)}% conf)
-                            </span>
+                    {contacts.map((contact) => {
+                      const existingMessage = messages.find(m => m.contact_id === contact.id);
+                      return (
+                        <div key={contact.id} className={styles.contactItem}>
+                          <div className={styles.contactInfo}>
+                            <h4>{contact.name}</h4>
+                            <p>{contact.title}</p>
+                            {contact.email && (
+                              <span className={styles.contactEmail}>
+                                {contact.email} ({Math.round((contact.email_confidence || 0) * 100)}% conf)
+                              </span>
+                            )}
+                          </div>
+
+                          {existingMessage ? (
+                            <button 
+                              className="btn-secondary"
+                              onClick={() => router.push("/outreach")}
+                              style={{ 
+                                padding: "0.3rem 0.6rem", 
+                                fontSize: "0.75rem",
+                                color: "var(--accent)",
+                                borderColor: "var(--accent)"
+                              }}
+                            >
+                              <CheckCircle size={12} />
+                              <span>View Draft</span>
+                            </button>
+                          ) : (
+                            <button 
+                              className="btn-secondary"
+                              onClick={() => handleGenerateOutreach(contact)}
+                              disabled={generatingOutreachFor === contact.id}
+                              style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
+                            >
+                              {generatingOutreachFor === contact.id ? (
+                                <Loader size={12} className={styles.spin} />
+                              ) : (
+                                <Mail size={12} />
+                              )}
+                              <span>Email Draft</span>
+                            </button>
                           )}
                         </div>
-
-                        <button 
-                          className="btn-secondary"
-                          onClick={() => handleGenerateOutreach(contact)}
-                          disabled={generatingOutreachFor === contact.id}
-                          style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
-                        >
-                          {generatingOutreachFor === contact.id ? (
-                            <Loader size={12} className={styles.spin} />
-                          ) : (
-                            <Mail size={12} />
-                          )}
-                          <span>Email Draft</span>
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>

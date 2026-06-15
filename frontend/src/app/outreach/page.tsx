@@ -1,17 +1,16 @@
 "use client";
 
-import React, { useState } from "react";
-import { useApp, Message, Job } from "../../context/AppContext";
+import React, { useState, useEffect } from "react";
+import { useApp, Message, Job, Contact } from "../../context/AppContext";
+import { API_BASE_URL } from "../../config";
 import { 
   Mail, 
   Send, 
   Edit3, 
-  RefreshCw, 
   CheckSquare, 
-  Archive,
-  ArrowRight,
   User,
-  ExternalLink
+  ExternalLink,
+  FileDown
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import styles from "./page.module.css";
@@ -21,10 +20,13 @@ const OutreachPage: React.FC = () => {
     messages, 
     jobs, 
     updateMessageDraft, 
-    sendOutreach 
+    sendOutreach,
+    getContactById,
+    activeProfile
   } = useApp();
 
   const [selectedMsg, setSelectedMsg] = useState<Message | null>(null);
+  const [contact, setContact] = useState<Contact | null>(null);
   const [editText, setEditText] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
@@ -38,6 +40,20 @@ const OutreachPage: React.FC = () => {
     setEditText(msg.draft);
     setIsEditing(false);
   };
+
+  // Fetch contact details when a message is selected
+  useEffect(() => {
+    if (selectedMsg) {
+      getContactById(selectedMsg.contact_id)
+        .then(setContact)
+        .catch((err) => {
+          console.error("Failed to load contact info:", err);
+          setContact(null);
+        });
+    } else {
+      setContact(null);
+    }
+  }, [selectedMsg, getContactById]);
 
   const handleSaveDraft = async () => {
     if (!selectedMsg) return;
@@ -70,6 +86,44 @@ const OutreachPage: React.FC = () => {
       alert("Failed to send outreach.");
     } finally {
       setSendingId(null);
+    }
+  };
+
+  // Helper to parse subject and body from the message draft
+  const parseMessageText = (text: string) => {
+    let subject = "";
+    let body = text;
+
+    const subjectMatch = text.match(/^Subject:\s*(.*)/i);
+    if (subjectMatch) {
+      subject = subjectMatch[1].trim();
+      body = text.replace(/^Subject:.*\n?/i, "").trim();
+    } else {
+      // Generate standard fallback subject
+      const job = selectedMsg ? getJobForMessage(selectedMsg) : null;
+      subject = job ? `Application for ${job.title} - ${job.company}` : "Outreach Inquiry";
+    }
+
+    return { subject, body };
+  };
+
+  // Open Gmail compose in a new tab with pre-filled fields
+  const handleOpenInGmail = () => {
+    if (!selectedMsg) return;
+    const { subject, body } = parseMessageText(editText || selectedMsg.draft);
+    const toEmail = contact?.email || `hr@${getJobForMessage(selectedMsg)?.company?.toLowerCase().replace(/\s+/g, "") || "company"}.com`;
+    
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(toEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, "_blank");
+  };
+
+  // Download active resume PDF from the server
+  const handleDownloadResume = () => {
+    if (activeProfile?.resume_url) {
+      const resumeUrl = `${API_BASE_URL}${activeProfile.resume_url}`;
+      window.open(resumeUrl, "_blank");
+    } else {
+      alert("No active resume uploaded. Please go to Settings to upload your resume.");
     }
   };
 
@@ -140,7 +194,18 @@ const OutreachPage: React.FC = () => {
                   <h2>Outreach Draft Details</h2>
                 </div>
 
-                <div className={styles.headerActions}>
+                <div className={styles.headerActions} style={{ display: "flex", gap: "0.5rem" }}>
+                  {activeProfile && (
+                    <button 
+                      className="btn-secondary"
+                      onClick={handleDownloadResume}
+                      style={{ padding: "0.45rem 0.9rem", fontSize: "0.8rem" }}
+                      title="Download/view your active resume PDF"
+                    >
+                      <FileDown size={14} />
+                      <span>My Resume</span>
+                    </button>
+                  )}
                   {selectedMsg.status === "draft" && (
                     <button 
                       className="btn-secondary"
@@ -157,6 +222,47 @@ const OutreachPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* Recruiter info card */}
+              <div className={styles.recruiterCard}>
+                <div className={styles.recruiterRow}>
+                  <div>
+                    <span className={styles.recruiterName}>
+                      {contact?.name || "Hiring Manager"}
+                    </span>
+                    <span className={styles.recruiterTitle}>
+                      {contact?.title ? ` &bull; ${contact.title}` : ""}
+                    </span>
+                  </div>
+                  {contact?.linkedin_url && (
+                    <a 
+                      href={contact.linkedin_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-primary flex items-center gap-1"
+                      style={{ fontSize: "0.8rem", textDecoration: "underline" }}
+                    >
+                      LinkedIn <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+                <div>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginRight: "0.5rem" }}>Email:</span>
+                  <span className={styles.recruiterEmail}>
+                    {contact?.email || `hr@${getJobForMessage(selectedMsg)?.company?.toLowerCase().replace(/\s+/g, "") || "company"}.com`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Parsed Subject line display (read-only when not editing) */}
+              {!isEditing && (
+                <div className={styles.subjectBlock}>
+                  <span className={styles.subjectLabel}>Subject</span>
+                  <span className={styles.subjectText}>
+                    {parseMessageText(selectedMsg.draft).subject}
+                  </span>
+                </div>
+              )}
+
               {/* Text Area / Render */}
               <div className={styles.bodySection}>
                 {isEditing ? (
@@ -168,7 +274,7 @@ const OutreachPage: React.FC = () => {
                   />
                 ) : (
                   <div className={styles.msgViewText}>
-                    {selectedMsg.draft}
+                    {parseMessageText(selectedMsg.draft).body}
                   </div>
                 )}
               </div>
@@ -182,16 +288,25 @@ const OutreachPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className={styles.sendGroup}>
+                <div className={styles.sendGroup} style={{ gap: "0.75rem" }}>
                   {selectedMsg.status === "draft" && (
-                    <button 
-                      className="btn-primary animate-pulse"
-                      onClick={() => handleSend(selectedMsg)}
-                      disabled={sendingId === selectedMsg.id}
-                    >
-                      <Send size={16} />
-                      <span>{sendingId === selectedMsg.id ? "Sending..." : "Send Message"}</span>
-                    </button>
+                    <>
+                      <button 
+                        className={`btn-secondary ${styles.gmailBtn}`}
+                        onClick={handleOpenInGmail}
+                      >
+                        <Mail size={16} />
+                        <span>Open in Gmail</span>
+                      </button>
+                      <button 
+                        className="btn-primary animate-pulse"
+                        onClick={() => handleSend(selectedMsg)}
+                        disabled={sendingId === selectedMsg.id}
+                      >
+                        <Send size={16} />
+                        <span>{sendingId === selectedMsg.id ? "Sending..." : "Send via App"}</span>
+                      </button>
+                    </>
                   )}
                   {selectedMsg.status === "sent" && (
                     <div className={styles.sentConfirmation}>

@@ -35,8 +35,18 @@ app.add_middleware(
 # Include core routers
 app.include_router(api_router, prefix="/api/v1")
 
+# Mount static files to serve uploaded resumes
+from fastapi.staticfiles import StaticFiles
+import os
+static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+os.makedirs(static_dir, exist_ok=True)
+os.makedirs(os.path.join(static_dir, "resumes"), exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+
 # Healthcheck route
 @app.get("/health")
+@app.get("/api/v1/health")
 def healthcheck():
     return {
         "status": "healthy",

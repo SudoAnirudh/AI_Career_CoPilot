@@ -15,7 +15,8 @@ export interface Profile {
   certifications: any[];
   resume_url: string;
   is_active: boolean;
-  uploaded_at: string;
+  uploaded_at?: string;
+  created_at?: string;
 }
 
 export interface Job {
@@ -101,6 +102,7 @@ interface AppContextType {
   discoverJobs: () => Promise<void>;
   saveJob: (jobId: string) => Promise<Job>;
   getContacts: (jobId: string) => Promise<Contact[]>;
+  getContactById: (contactId: string) => Promise<Contact>;
   generateOutreach: (contactId: string, type: string) => Promise<Message>;
   sendOutreach: (messageId: string) => Promise<Message>;
   updateMessageDraft: (messageId: string, text: string) => Promise<Message>;
@@ -355,6 +357,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return await response.json();
   };
 
+  const getContactById = async (contactId: string): Promise<Contact> => {
+    const response = await fetch(`${API_BASE_URL}/outreach/contacts/${contactId}`, {
+      headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to load contact");
+    return await response.json();
+  };
+
   const generateOutreach = async (contactId: string, type: string): Promise<Message> => {
     const response = await fetch(
       `${API_BASE_URL}/outreach/generate?contact_id=${contactId}&message_type=${type}`,
@@ -447,6 +457,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         discoverJobs,
         saveJob,
         getContacts,
+        getContactById,
         generateOutreach,
         sendOutreach,
         updateMessageDraft,

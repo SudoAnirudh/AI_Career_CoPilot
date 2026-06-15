@@ -308,3 +308,82 @@
     display: none;
   }
 }
+
+.subjectBlock {
+  background: #f1f5f9;
+  border: 1px solid var(--panel-border);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.subjectLabel {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.subjectText {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recruiterCard {
+  background: #f8fafc;
+  border: 1px solid var(--panel-border);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.recruiterRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.recruiterName {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.recruiterTitle {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.recruiterEmail {
+  font-size: 0.8rem;
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.gmailBtn {
+  background-color: #ea4335 !important;
+  color: white !important;
+  border: none !important;
+}
+
+.gmailBtn:hover {
+  background-color: #d93025 !important;
+}
+
+.resumeBtn {
+  background-color: #2563eb !important;
+  color: white !important;
+  border: none !important;
+}
+
+.resumeBtn:hover {
+  background-color: #1d4ed8 !important;
+}

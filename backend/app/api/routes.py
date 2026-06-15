@@ -252,6 +252,17 @@ async def generate_outreach(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@outreach_router.get("/contacts/{contact_id}", response_model=schemas.ContactResponse)
+async def get_contact_by_id(
+    contact_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    contact = db.query(Contact).filter(Contact.id == contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+    return contact
+
 @outreach_router.get("/messages", response_model=List[schemas.MessageResponse])
 async def list_messages(
     db: Session = Depends(get_db),
@@ -298,6 +309,24 @@ async def send_outreach_message(
     # Mock sending via Gmail API
     logger.info(f"Sending message {message_id} to contact.")
     
+    # Check if there is an active profile with a resume PDF
+    active_profile = db.query(Profile).filter(Profile.user_id == current_user.id, Profile.is_active == True).first()
+    if active_profile and active_profile.resume_url:
+        if active_profile.resume_url.startswith("/static/resumes/"):
+            import os
+            # Resolve physical file path: app/static/resumes/{profile_id}.pdf
+            static_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            rel_path = active_profile.resume_url.lstrip("/")
+            full_path = os.path.join(static_dir, rel_path)
+            if os.path.exists(full_path):
+                logger.info(f"Attached resume PDF file: {full_path} to cold outreach email.")
+            else:
+                logger.warning(f"Resume PDF url is {active_profile.resume_url} but file does not exist at {full_path}.")
+        else:
+            logger.info(f"Attached resume URL/filename: {active_profile.resume_url} to cold outreach email.")
+    else:
+        logger.info("No resume attached (no active profile or resume found).")
+        
     msg.status = "sent"
     msg.sent_at = datetime.utcnow()
     msg.final_text = msg.draft

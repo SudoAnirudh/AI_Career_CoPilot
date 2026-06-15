@@ -26,7 +26,7 @@ def call_nvidia_nim(prompt: str, system_prompt: str = "") -> str:
     messages.append({"role": "user", "content": prompt})
 
     payload = {
-        "model": "meta/llama-3.1-70b-instruct",
+        "model": "meta/llama-3.3-70b-instruct",
         "messages": messages,
         "temperature": 0.2,
         "max_tokens": 2048

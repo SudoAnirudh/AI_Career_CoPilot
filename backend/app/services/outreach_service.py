@@ -6,9 +6,9 @@ from app.services.llm import call_nvidia_nim
 logger = logging.getLogger("app.services.outreach")
 
 REFERRAL_REQUEST_PROMPT = """
-You are a career coach writing a LinkedIn referral request on behalf of {user_name}.
+You are {user_name}, writing a LinkedIn referral request directly to {contact_name}.
 
-User Background:
+User Background (My Background):
 {profile_summary}
 
 Target Contact:
@@ -17,26 +17,30 @@ Target Contact:
 - Company: {company_name}
 
 Job Role: {job_title}
+Job Description:
+{job_description}
 
 Company Context:
 {company_summary}
 
 Rules:
 - Max 150 words
+- Write in the first person (use "I", "me", "my", "my background", "my projects"). DO NOT write in the third person or say you are writing on behalf of someone else.
 - No generic openers ("Hope this finds you well", "Dear", "Respected")
 - Reference one specific thing about the contact's company or work
-- Mention one relevant project from the user's background
+- Mention one relevant project or skill from my background that directly aligns with the Job Description requirements.
 - End with a clear, low-pressure ask
 - Do not use the word "leverage"
 - Sound human, not AI-generated
+- Sign off using exactly your name "{user_name}". Do not leave any placeholders or template markers like "[Your Name]".
 
 Return only the message text. No subject line. No "Hi" header.
 """
 
 COLD_EMAIL_PROMPT = """
-You are a career coach writing a cold outreach email on behalf of {user_name} to a recruiter.
+You are {user_name}, writing a cold outreach email directly to a recruiter ({contact_name}).
 
-User Background:
+User Background (My Background):
 {profile_summary}
 
 Target Contact:
@@ -45,33 +49,42 @@ Target Contact:
 - Company: {company_name}
 
 Job Role: {job_title}
+Job Description:
+{job_description}
 
 Company Context:
 {company_summary}
 
 Rules:
 - Max 200 words
+- Write in the first person (use "I", "me", "my", "my background", "my projects"). DO NOT write in the third person or say you are writing on behalf of someone else.
 - Subject Line: Must start with "Subject:" and be concise and click-worthy.
 - No generic openers ("Hope this finds you well")
-- Bullet points of key projects (max 2 projects) with technologies
+- Bullet points of key projects or experiences (max 2) with technologies that directly map to the core needs in the Job Description.
 - Clear ask: is this role open or open to a brief chat?
 - Sound professional, enthusiastic, and human
+- Sign off using exactly your name "{user_name}". Do not leave any placeholders, square brackets, or template markers (like "[Your Name]", "[Your Contact Information]", "[Contact Name]", "[Company Name]") in the output. Replace them with the actual details provided.
 
 Return the Subject line and the email body.
 """
 
 FOLLOW_UP_PROMPT = """
-You are a career coach writing a follow-up outreach message on behalf of {user_name} to {contact_name} at {company_name}.
-We previously reached out about the {job_title} opening but haven't heard back.
+You are {user_name}, writing a follow-up outreach message directly to {contact_name} at {company_name}.
+I previously reached out about the {job_title} opening but haven't heard back.
 
-User Background:
+User Background (My Background):
 {profile_summary}
+
+Job Description:
+{job_description}
 
 Rules:
 - Max 100 words
+- Write in the first person (use "I", "me", "my", "my background", "my projects"). DO NOT write in the third person or say you are writing on behalf of someone else.
 - Acknowledge that they are busy
-- Reinforce interest
+- Reinforce interest, citing a brief alignment with their Job Description (e.g. key matching technology/experience)
 - Friendly, brief, no pressure
+- Sign off using exactly your name "{user_name}". Do not leave any placeholders like "[Your Name]" in the output.
 
 Return only the message text.
 """
@@ -113,12 +126,28 @@ def generate_outreach_message(db: Session, contact_id: str, message_type: str) -
         for p in profile.projects:
             projects_desc.append(f"{p.get('name')}: {p.get('description')} using {', '.join(p.get('tech', []))}")
             
+    experience_desc = []
+    if profile.experience:
+        for exp in profile.experience:
+            experience_desc.append(f"{exp.get('role')} at {exp.get('company')} ({exp.get('duration')}): {exp.get('description')}")
+            
+    education_desc = []
+    if profile.education:
+        for edu in profile.education:
+            education_desc.append(f"{edu.get('degree')} from {edu.get('institution')} ({edu.get('year')})")
+            
     profile_summary = f"""
     Name: {user_name}
     Skills: {', '.join(skills_flat)}
     Projects:
     - {chr(10).join(projects_desc)}
+    Experience:
+    - {chr(10).join(experience_desc) if experience_desc else 'None listed'}
+    Education:
+    - {chr(10).join(education_desc) if education_desc else 'None listed'}
     """
+    
+    job_desc = job.description or "No description provided."
     
     # Choose prompt based on type
     if message_type == "linkedin_referral":
@@ -129,6 +158,7 @@ def generate_outreach_message(db: Session, contact_id: str, message_type: str) -
             contact_title=contact.title,
             company_name=job.company,
             job_title=job.title,
+            job_description=job_desc,
             company_summary=company_summary
         )
     elif message_type == "cold_email":
@@ -139,6 +169,7 @@ def generate_outreach_message(db: Session, contact_id: str, message_type: str) -
             contact_title=contact.title,
             company_name=job.company,
             job_title=job.title,
+            job_description=job_desc,
             company_summary=company_summary
         )
     elif message_type == "follow_up":
@@ -147,7 +178,8 @@ def generate_outreach_message(db: Session, contact_id: str, message_type: str) -
             profile_summary=profile_summary,
             contact_name=contact.name,
             company_name=job.company,
-            job_title=job.title
+            job_title=job.title,
+            job_description=job_desc
         )
     else:
         raise ValueError(f"Invalid message type: {message_type}")

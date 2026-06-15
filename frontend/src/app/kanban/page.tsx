@@ -131,7 +131,7 @@ const KanbanPage: React.FC = () => {
                                 borderColor: job.match_score >= 75 ? "var(--score-high)" : "var(--score-medium)" 
                               }}
                             >
-                              {job.match_score}% Match
+                              {Math.round(job.match_score)}% Match
                             </span>
                           )}
                         </div>

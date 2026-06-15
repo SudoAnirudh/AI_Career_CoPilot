@@ -169,13 +169,15 @@ const SettingsPage: React.FC = () => {
 
               <div className={styles.profileMetaRow}>
                 <span className={styles.metaLabel}>Parsed On:</span>
-                <span>{new Date(activeProfile.uploaded_at).toLocaleString()}</span>
+                <span>{activeProfile.created_at ? new Date(activeProfile.created_at).toLocaleString() : "N/A"}</span>
               </div>
 
               <div className={styles.skillsBox}>
-                <h4>Parsed Skills ({Object.keys(activeProfile.skills || {}).length})</h4>
+                <h4>Parsed Skills ({Object.values(activeProfile.skills || {}).flat().length})</h4>
                 <div className={styles.skillsCloud}>
-                  {Object.keys(activeProfile.skills || {}).map(skill => (
+                  {Object.entries(activeProfile.skills || {}).flatMap(([category, items]) => 
+                    Array.isArray(items) ? items : []
+                  ).map(skill => (
                     <span key={skill} className={styles.skillTag}>{skill}</span>
                   ))}
                 </div>

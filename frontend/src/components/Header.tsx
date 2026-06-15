@@ -72,7 +72,7 @@ const Header: React.FC = () => {
               <div className={styles.resumeMeta}>
                 <span className={styles.resumeLabel}>Resume V{activeProfile.version}</span>
                 <span className={styles.resumeDate}>
-                  {new Date(activeProfile.uploaded_at).toLocaleDateString()}
+                  {activeProfile.created_at ? new Date(activeProfile.created_at).toLocaleDateString() : "N/A"}
                 </span>
               </div>
             </div>
