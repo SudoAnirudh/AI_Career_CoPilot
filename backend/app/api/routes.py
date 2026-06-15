@@ -231,6 +231,24 @@ async def get_job_contacts(
     contacts = discover_contacts_for_job(db, job)
     return contacts
 
+@jobs_router.post("/{job_id}/recalculate", response_model=schemas.JobResponse)
+async def recalculate_job_match(
+    job_id: uuid.UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    job = db.query(Job).filter(Job.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    profile = db.query(Profile).filter(Profile.user_id == current_user.id, Profile.is_active == True).first()
+    if not profile:
+        raise HTTPException(status_code=400, detail="No active profile found. Please upload a resume first.")
+        
+    run_matching_pipeline(db, job, profile)
+    db.refresh(job)
+    return job
+
 api_router.include_router(jobs_router)
 
 

@@ -109,6 +109,7 @@ interface AppContextType {
   createApplication: (payload: any) => Promise<Application>;
   updateApplication: (appId: string, payload: any) => Promise<Application>;
   deleteApplication: (appId: string) => Promise<void>;
+  recalculateMatch: (jobId: string) => Promise<Job>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -349,6 +350,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return job;
   };
 
+  const recalculateMatch = async (jobId: string): Promise<Job> => {
+    const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/recalculate`, {
+      method: "POST",
+      headers: getHeaders()
+    });
+    if (!response.ok) throw new Error("Failed to recalculate match");
+    const job = await response.json();
+    await refreshAll();
+    return job;
+  };
+
   const getContacts = async (jobId: string): Promise<Contact[]> => {
     const response = await fetch(`${API_BASE_URL}/jobs/${jobId}/contacts`, {
       headers: getHeaders()
@@ -463,7 +475,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateMessageDraft,
         createApplication,
         updateApplication,
-        deleteApplication
+        deleteApplication,
+        recalculateMatch
       }}
     >
       {children}

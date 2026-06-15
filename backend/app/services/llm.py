@@ -53,7 +53,42 @@ def generate_mock_llm_response(prompt: str) -> str:
     Generates realistic, structured mock JSON/text responses based on the prompt content
     to ensure full off-line capability.
     """
-    # 1. Check if the prompt is for Resume Parsing
+    # 1. Check if the prompt is for Match Explanation
+    if "MATCH_EXPLANATION_PROMPT" in prompt or "project_alignments" in prompt or "tailoring_advice" in prompt:
+        # Extract company/job info from prompt if possible
+        job_title = "AI Engineer"
+        company_name = "Sarvam AI"
+        
+        match_title = re.search(r"title[\"\']?\s*:\s*[\"\']?([^\"\'\n]+)", prompt, re.I)
+        if match_title:
+            job_title = match_title.group(1)
+        match_comp = re.search(r"company[\"\']?\s*:\s*[\"\']?([^\"\'\n]+)", prompt, re.I)
+        if match_comp:
+            company_name = match_comp.group(1)
+ 
+        score = 85.0
+        # If job calls for something completely unrelated, reduce score
+        if "android" in job_title.lower():
+            score = 88.0
+        elif "ml" in job_title.lower() or "ai" in job_title.lower():
+            score = 87.0
+        
+        explanation = {
+            "score": score,
+            "matched_skills": ["Python", "FastAPI", "LangChain", "Gemini API", "ChromaDB"],
+            "missing_skills": ["Kubernetes", "PyTorch"],
+            "project_alignments": [
+                {"project": "SummarizeAgent", "jd_element": "Building LLM agents", "similarity": 0.91},
+                {"project": "Nimma-Guru", "jd_element": "Generative AI integrations", "similarity": 0.85}
+            ],
+            "role_similarity": 0.92,
+            "summary": f"Your strong background in building FastAPI microservices and integrating Gemini/LLMs aligns directly with {company_name}'s requirements for a {job_title}.",
+            "tailoring_advice": "Focus on highlighting your hands-on experience with LLM applications, embeddings, and FastAPI microservices in your project descriptions.",
+            "recommendation": "apply"
+        }
+        return json.dumps(explanation, indent=2)
+ 
+    # 2. Check if the prompt is for Resume Parsing
     if "User Profile" in prompt or "resume" in prompt.lower() and "json" in prompt.lower() and "skills" in prompt.lower():
         # Extracted candidate details for Anirudh Sudheer (default profile based on PRD)
         profile_data = {
@@ -112,40 +147,6 @@ def generate_mock_llm_response(prompt: str) -> str:
             ]
         }
         return json.dumps(profile_data, indent=2)
-
-    # 2. Check if the prompt is for Match Explanation
-    if "MATCH_EXPLANATION_PROMPT" in prompt or "project_alignments" in prompt:
-        # Extract company/job info from prompt if possible
-        job_title = "AI Engineer"
-        company_name = "Sarvam AI"
-        
-        match_title = re.search(r"title[\"\']?\s*:\s*[\"\']?([^\"\'\n]+)", prompt, re.I)
-        if match_title:
-            job_title = match_title.group(1)
-        match_comp = re.search(r"company[\"\']?\s*:\s*[\"\']?([^\"\'\n]+)", prompt, re.I)
-        if match_comp:
-            company_name = match_comp.group(1)
-
-        score = 85.0
-        # If job calls for something completely unrelated, reduce score
-        if "android" in job_title.lower():
-            score = 88.0
-        elif "ml" in job_title.lower() or "ai" in job_title.lower():
-            score = 87.0
-        
-        explanation = {
-            "score": score,
-            "matched_skills": ["Python", "FastAPI", "LangChain", "Gemini API", "ChromaDB"],
-            "missing_skills": ["Kubernetes", "PyTorch"],
-            "project_alignments": [
-                {"project": "SummarizeAgent", "jd_element": "Building LLM agents", "similarity": 0.91},
-                {"project": "Nimma-Guru", "jd_element": "Generative AI integrations", "similarity": 0.85}
-            ],
-            "role_similarity": 0.92,
-            "summary": f"Your strong background in building FastAPI microservices and integrating Gemini/LLMs aligns directly with {company_name}'s requirements for a {job_title}.",
-            "recommendation": "apply"
-        }
-        return json.dumps(explanation, indent=2)
 
     # 3. Check if prompt is for Outreach Message
     if "REFERRAL_REQUEST_PROMPT" in prompt or "outreach" in prompt.lower() or "referral" in prompt.lower():

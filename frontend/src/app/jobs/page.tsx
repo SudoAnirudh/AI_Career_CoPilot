@@ -15,7 +15,11 @@ import {
   CheckCircle,
   FileText,
   Mail,
-  Loader
+  Loader,
+  RefreshCw,
+  Check,
+  AlertCircle,
+  BookOpen
 } from "lucide-react";
 import styles from "./page.module.css";
 
@@ -29,12 +33,14 @@ const JobsPage: React.FC = () => {
     generateOutreach,
     applications,
     createApplication,
-    messages
+    messages,
+    recalculateMatch
   } = useApp();
 
   const [search, setSearch] = useState("");
   const [minMatch, setMinMatch] = useState<number>(0);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [recalculating, setRecalculating] = useState<string | null>(null);
   
   // Job Details drawer state
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -83,6 +89,19 @@ const JobsPage: React.FC = () => {
     } catch (e) {
       console.error(e);
       alert("Failed to track application.");
+    }
+  };
+
+  const handleRecalculate = async (jobId: string) => {
+    setRecalculating(jobId);
+    try {
+      const updatedJob = await recalculateMatch(jobId);
+      setSelectedJob(updatedJob);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to recalculate match details.");
+    } finally {
+      setRecalculating(null);
     }
   };
 
@@ -260,34 +279,126 @@ const JobsPage: React.FC = () => {
 
               {/* Match Score Breakdown */}
               <div className={styles.breakdownSection}>
-                <h3>AI Match Analysis</h3>
+                <div className={styles.breakdownHeader}>
+                  <div className={styles.scoreCircle} style={{ borderColor: getScoreColor(selectedJob.match_score || 0) }}>
+                    <span className={styles.scoreVal}>{(selectedJob.match_score || 0).toFixed(0)}</span>
+                    <span className={styles.scorePct}>%</span>
+                  </div>
+                  <div className={styles.scoreSummary}>
+                    <h3>Match Analysis</h3>
+                    <p className={styles.recommendationBadge} style={{ color: getScoreColor(selectedJob.match_score || 0) }}>
+                      {selectedJob.match_score && selectedJob.match_score >= 75 ? "Excellent Fit" : 
+                       selectedJob.match_score && selectedJob.match_score >= 55 ? "Good Match" : "Low Match"}
+                    </p>
+                    <button 
+                      onClick={() => handleRecalculate(selectedJob.id)} 
+                      disabled={recalculating === selectedJob.id}
+                      className={styles.recalcButton}
+                    >
+                      <RefreshCw size={12} className={recalculating === selectedJob.id ? styles.spin : ""} />
+                      <span>{recalculating === selectedJob.id ? "Analyzing Resume..." : "Recalculate Fit"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-component Progress Bars */}
                 <div className={styles.breakdownMetrics}>
                   {selectedJob.match_explanation?.components ? (
                     Object.entries(selectedJob.match_explanation.components).map(([k, val]: [string, any]) => (
                       <div key={k} className={styles.metricRow}>
-                        <span className={styles.metricName}>{k.replace("_", " ")}</span>
+                        <span className={styles.metricName}>{k.replace(/_/g, " ")}</span>
                         <div className={styles.metricBarBg}>
                           <div 
                             className={styles.metricBarFill}
                             style={{ 
-                              width: `${val * 100}%`,
-                              background: getScoreColor(val * 100)
+                              width: `${(val || 0) * 100}%`,
+                              background: getScoreColor((val || 0) * 100)
                             }}
                           />
                         </div>
-                        <span className={styles.metricVal}>{(val * 100).toFixed(0)}%</span>
+                        <span className={styles.metricVal}>{((val || 0) * 100).toFixed(0)}%</span>
                       </div>
                     ))
                   ) : (
-                    <p className={styles.noExplanation}>No component breakdown available.</p>
+                    <div className={styles.metricRow}>
+                      <span className={styles.metricName}>Skills Overlap</span>
+                      <div className={styles.metricBarBg}>
+                        <div className={styles.metricBarFill} style={{ width: `${selectedJob.match_score || 0}%`, background: getScoreColor(selectedJob.match_score || 0) }} />
+                      </div>
+                      <span className={styles.metricVal}>{(selectedJob.match_score || 0).toFixed(0)}%</span>
+                    </div>
                   )}
                 </div>
 
-                {selectedJob.match_explanation?.explanation && (
-                  <div className={styles.explanationText}>
-                    <p><strong>Agent Feedback:</strong> {selectedJob.match_explanation.explanation}</p>
+                {/* Keywords Overlap Analysis */}
+                <div className={styles.keywordsAnalysis}>
+                  <div className={styles.keywordBlock}>
+                    <h4 className={styles.keywordTitleMatched}>
+                      <Check size={14} className={styles.iconGreen} />
+                      Matched Skills & Keywords
+                    </h4>
+                    <div className={styles.badgeGrid}>
+                      {selectedJob.match_explanation?.matched_skills && selectedJob.match_explanation.matched_skills.length > 0 ? (
+                        selectedJob.match_explanation.matched_skills.map((skill: string, idx: number) => (
+                          <span key={idx} className={`${styles.badge} ${styles.badgeMatched}`}>{skill}</span>
+                        ))
+                      ) : (
+                        <span className={styles.emptyText}>No matched keywords identified.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className={styles.keywordBlock}>
+                    <h4 className={styles.keywordTitleMissing}>
+                      <AlertCircle size={14} className={styles.iconOrange} />
+                      Missing Skills (JD Gaps)
+                    </h4>
+                    <div className={styles.badgeGrid}>
+                      {selectedJob.match_explanation?.missing_skills && selectedJob.match_explanation.missing_skills.length > 0 ? (
+                        selectedJob.match_explanation.missing_skills.map((skill: string, idx: number) => (
+                          <span key={idx} className={`${styles.badge} ${styles.badgeMissing}`}>{skill}</span>
+                        ))
+                      ) : (
+                        <span className={styles.emptyText}>No missing skills detected. Excellent!</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Project Alignments */}
+                {selectedJob.match_explanation?.project_alignments && selectedJob.match_explanation.project_alignments.length > 0 && (
+                  <div className={styles.projectAlignmentsSection}>
+                    <h4>Project Relevance Map</h4>
+                    <div className={styles.projectAlignmentsList}>
+                      {selectedJob.match_explanation.project_alignments.map((align: any, idx: number) => (
+                        <div key={idx} className={styles.alignmentCard}>
+                          <div className={styles.alignmentHeader}>
+                            <span className={styles.alignProjectName}>{align.project}</span>
+                            <span className={styles.alignPct}>{((align.similarity || 0.8) * 100).toFixed(0)}% Match</span>
+                          </div>
+                          <p className={styles.alignDesc}>Matches requirement: <em>{align.jd_element}</em></p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {/* Resume Optimization Advisor */}
+                <div className={styles.tailoringCard}>
+                  <div className={styles.advisorHeader}>
+                    <Sparkles size={16} className={styles.iconSparkle} />
+                    <h4>Resume Tailoring Advice</h4>
+                  </div>
+                  <p className={styles.advisorSummary}>
+                    {selectedJob.match_explanation?.summary || "Analyzing job context..."}
+                  </p>
+                  {selectedJob.match_explanation?.tailoring_advice && (
+                    <div className={styles.adviceDetail}>
+                      <span className={styles.adviceLabel}>Actionable Tip:</span>
+                      <p>{selectedJob.match_explanation.tailoring_advice}</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Networking Contacts */}
