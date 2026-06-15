@@ -8,6 +8,116 @@ from app.services.llm import call_nvidia_nim
 
 logger = logging.getLogger("app.services.matching")
 
+def clean_and_parse_json(json_str: str, default_val: dict) -> dict:
+    """
+    Strips single-line comments, multi-line comments, and parses a JSON string,
+    cleaning up project_alignments and other fields to fit the expected structure.
+    """
+    import re
+    # Extract first valid JSON object based on brace matching depth
+    first_brace = json_str.find('{')
+    if first_brace != -1:
+        depth = 0
+        in_string = False
+        escape = False
+        target_str = ""
+        for i in range(first_brace, len(json_str)):
+            char = json_str[i]
+            if escape:
+                escape = False
+                continue
+            if char == '\\':
+                escape = True
+                continue
+            if char == '"':
+                in_string = not in_string
+                continue
+            if not in_string:
+                if char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        target_str = json_str[first_brace:i+1]
+                        break
+        if not target_str:
+            target_str = json_str[first_brace:]
+    else:
+        target_str = json_str
+        
+    try:
+        # Remove single-line comments like // ... (careful with https://)
+        target_str = re.sub(r'(?<!:)\/\/[^\n]*', '', target_str)
+        # Remove multi-line comments /* ... */
+        target_str = re.sub(r'\/\*.*?\*\/', '', target_str, flags=re.DOTALL)
+        
+        data = json.loads(target_str.strip())
+    except Exception as e:
+        logger.warning(f"JSON clean parsing failed: {e}")
+        return default_val
+
+    # Standardize project_alignments
+    raw_alignments = data.get("project_alignments", [])
+    standardized_alignments = []
+    if isinstance(raw_alignments, list):
+        for item in raw_alignments:
+            if isinstance(item, dict):
+                proj_name = item.get("project") or item.get("name") or "Project"
+                jd_el = item.get("jd_element") or item.get("description") or "Aligned Stack"
+                sim_val = item.get("similarity") or 0.8
+                try:
+                    sim_val = float(sim_val)
+                except ValueError:
+                    sim_val = 0.8
+                standardized_alignments.append({
+                    "project": str(proj_name),
+                    "jd_element": str(jd_el),
+                    "similarity": sim_val
+                })
+            elif isinstance(item, str):
+                standardized_alignments.append({
+                    "project": item,
+                    "jd_element": "Aligned stack and skills",
+                    "similarity": 0.8
+                })
+        data["project_alignments"] = standardized_alignments
+    else:
+        data["project_alignments"] = []
+        
+    # Standardize lists
+    for list_field in ["matched_skills", "missing_skills"]:
+        if list_field not in data or not isinstance(data[list_field], list):
+            data[list_field] = []
+        else:
+            data[list_field] = [str(x) for x in data[list_field]]
+            
+    # Standardize string fields
+    if "summary" not in data:
+        data["summary"] = default_val.get("summary", "")
+    else:
+        data["summary"] = str(data["summary"])
+        
+    if "tailoring_advice" not in data:
+        data["tailoring_advice"] = default_val.get("tailoring_advice", "")
+    elif isinstance(data["tailoring_advice"], list):
+        data["tailoring_advice"] = "\n".join([f"• {x}" for x in data["tailoring_advice"]])
+    else:
+        data["tailoring_advice"] = str(data["tailoring_advice"])
+        
+    # Set overall score if present
+    if "score" in data:
+        try:
+            data["score"] = float(data["score"])
+        except ValueError:
+            data["score"] = default_val.get("score", 70.0)
+    else:
+        data["score"] = default_val.get("score", 70.0)
+        
+    if "recommendation" not in data:
+        data["recommendation"] = default_val.get("recommendation", "apply")
+        
+    return data
+
 # Simple tf-idf/cosine similarity implementation for fallback/offline calculations
 def calculate_text_similarity(text1: str, text2: str) -> float:
     """Calculate basic cosine similarity between two texts using word counts."""
@@ -191,32 +301,19 @@ def run_matching_pipeline(db: Session, job: Job, profile: Profile) -> dict:
     
     llm_explanation_raw = call_nvidia_nim(explanation_prompt)
     
-    # Clean up any potential markdown wrap
-    clean_json_str = llm_explanation_raw.strip()
-    if clean_json_str.startswith("```"):
-        lines = clean_json_str.split("\n")
-        if "```" in lines[0]:
-            lines = lines[1:]
-        if "```" in lines[-1]:
-            lines = lines[:-1]
-        clean_json_str = "\n".join(lines).strip()
-        
-    try:
-        explanation_json = json.loads(clean_json_str)
-    except Exception as e:
-        logger.warning(f"Failed to parse match explanation JSON: {e}")
-        # Default fallback explanation JSON
-        matched = [s for s in job_skills if s.lower() in [p.lower() for cat, items in profile_skills.items() for p in items]]
-        missing = [s for s in job_skills if s.lower() not in [p.lower() for cat, items in profile_skills.items() for p in items]]
-        explanation_json = {
-            "score": final_score,
-            "matched_skills": matched[:5] if matched else ["Python", "FastAPI", "React"],
-            "missing_skills": missing[:5] if missing else ["Generative AI", "LangChain"],
-            "project_alignments": [{"project": projects[0].get("name") if projects else "None", "jd_element": job.title, "similarity": 0.8}],
-            "summary": f"Good match based on your projects and development stack. Required experience is {job.experience_years_min or 0} years.",
-            "tailoring_advice": f"Emphasize your hands-on experience with {job.title} related stacks and your active AI/ML engineering projects.",
-            "recommendation": "apply" if final_score > 70 else "skip"
-        }
+    matched = [s for s in job_skills if s.lower() in [p.lower() for cat, items in profile_skills.items() for p in items]]
+    missing = [s for s in job_skills if s.lower() not in [p.lower() for cat, items in profile_skills.items() for p in items]]
+    fallback_json = {
+        "score": final_score,
+        "matched_skills": matched[:5] if matched else ["Python", "FastAPI", "React"],
+        "missing_skills": missing[:5] if missing else ["Generative AI", "LangChain"],
+        "project_alignments": [{"project": projects[0].get("name") if projects else "None", "jd_element": job.title, "similarity": 0.8}],
+        "summary": f"Good match based on your projects and development stack. Required experience is {job.experience_years_min or 0} years.",
+        "tailoring_advice": f"Emphasize your hands-on experience with {job.title} related stacks and your active AI/ML engineering projects.",
+        "recommendation": "apply" if final_score > 70 else "skip"
+    }
+    
+    explanation_json = clean_and_parse_json(llm_explanation_raw, fallback_json)
         
     # Inject components so that frontend has the metrics breakdown
     explanation_json["components"] = {

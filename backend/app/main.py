@@ -23,6 +23,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.on_event("startup")
+async def start_scheduler():
+    import asyncio
+    from app.services.job_discovery_service import run_periodic_job_discovery_loop
+    logger.info("Initializing background scraping scheduler...")
+    asyncio.create_task(run_periodic_job_discovery_loop())
+
 # Enable CORS for the React/Next.js frontend
 app.add_middleware(
     CORSMiddleware,

@@ -48,15 +48,24 @@ def discover_contacts_for_job(db: Session, job: Job) -> list:
     
     contacts = []
     
-    # Generate 2 to 3 contacts representing our priorities
-    num_contacts = random.randint(2, 3)
-    selected_roles = random.sample(MOCK_ROLES, num_contacts)
+    # 30% chance of finding no contacts at all (e.g. stealth startups or private profiles)
+    if random.random() < 0.30:
+        logger.info(f"No contacts found for company: {job.company}")
+        return []
+        
+    # Generate 1 to 3 contacts representing our priorities
+    num_contacts = random.randint(1, 3)
+    selected_roles = random.sample(MOCK_ROLES, min(num_contacts, len(MOCK_ROLES)))
     
     for role_title, priority in selected_roles:
         first = random.choice(MOCK_FIRST_NAMES)
         last = random.choice(MOCK_LAST_NAMES)
         
-        email, confidence = guess_email(first, last, domain)
+        # 40% chance of email being private / not guessable
+        if random.random() < 0.40:
+            email, confidence = None, 0.0
+        else:
+            email, confidence = guess_email(first, last, domain)
         
         new_contact = Contact(
             job_id=job.id,
@@ -66,7 +75,7 @@ def discover_contacts_for_job(db: Session, job: Job) -> list:
             linkedin_url=f"https://linkedin.com/in/{first.lower()}-{last.lower()}",
             email=email,
             email_confidence=confidence,
-            connection_degree=random.choice([1, 2, 3]) if priority != 4 else 1, # Alumni is 1st degree equivalent
+            connection_degree=random.choice([1, 2, 3]) if priority != 4 else 1,
             source="LinkedIn" if priority != 4 else "Alumni Network",
             status="discovered",
             notes=f"Discovered automatically. Priority {priority} contact."

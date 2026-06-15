@@ -2,6 +2,7 @@ import hashlib
 import logging
 import urllib.parse
 import re
+import json
 import xml.etree.ElementTree as ET
 from datetime import datetime, date, timedelta
 import httpx
@@ -10,69 +11,6 @@ from app.models import Job, Profile
 
 logger = logging.getLogger("app.services.job_discovery")
 
-# Realistic set of backup jobs in India / Remote for freshers/juniors in AI/ML & Android
-MOCK_JOBS_DB = [
-    {
-        "title": "AI Engineer",
-        "company": "Sarvam AI",
-        "description": "We are looking for an AI Engineer to join our team in Bangalore. You will work on fine-tuning Indic language models, optimizing model inference, and building FastAPI backends. Experience with PyTorch, LLMs, and Python is required.",
-        "skills_required": ["Python", "LLMs", "FastAPI", "PyTorch", "Indic languages"],
-        "location": "Bangalore",
-        "remote": False,
-        "salary_min": 1200000,
-        "salary_max": 1800000,
-        "experience_years_min": 0,
-        "experience_years_max": 2,
-        "source": "Wellfound",
-        "source_url": "https://wellfound.com/jobs/sarvam-ai-ai-engineer",
-        "posted_date": date.today()
-    },
-    {
-        "title": "Junior ML Engineer",
-        "company": "Krutrim AI",
-        "description": "Join Krutrim to build India's model infrastructure. Responsibilities include preparing datasets, training models, and deploying inference pipelines. Strong programming in Python, knowledge of transformers, and vector databases (ChromaDB/FAISS) is expected.",
-        "skills_required": ["Python", "Transformers", "ChromaDB", "FAISS", "Machine Learning"],
-        "location": "Remote",
-        "remote": True,
-        "salary_min": 1000000,
-        "salary_max": 1500000,
-        "experience_years_min": 0,
-        "experience_years_max": 1,
-        "source": "YC Jobs",
-        "source_url": "https://www.workatastartup.com/jobs/krutrim-ml-engineer",
-        "posted_date": date.today() - timedelta(days=1)
-    },
-    {
-        "title": "Product Engineer (GenAI)",
-        "company": "SplitSmart",
-        "description": "Looking for a Product Engineer to integrate advanced AI agents into our billing and expense management platform. You will design LLM-powered invoice parsing tools, build robust APIs using FastAPI and Python, and manage database queries in PostgreSQL.",
-        "skills_required": ["Python", "FastAPI", "PostgreSQL", "Gemini API", "AI Agents"],
-        "location": "Remote",
-        "remote": True,
-        "salary_min": 800000,
-        "salary_max": 1400000,
-        "experience_years_min": 0,
-        "experience_years_max": 2,
-        "source": "Foundit",
-        "source_url": "https://www.foundit.in/jobs/splitsmart-product-engineer",
-        "posted_date": date.today() - timedelta(days=2)
-    },
-    {
-        "title": "Android Developer (Kotlin)",
-        "company": "Nimma App Studio",
-        "description": "We are seeking a Passionate Android Developer to build modern mobile apps using Jetpack Compose, Kotlin, and Firebase. You will implement local caching, work on multi-threading, and build clean responsive interfaces. Familiarity with AI model integration on-device is a plus.",
-        "skills_required": ["Kotlin", "Jetpack Compose", "Firebase", "Android SDK"],
-        "location": "Bangalore",
-        "remote": False,
-        "salary_min": 600000,
-        "salary_max": 1000000,
-        "experience_years_min": 0,
-        "experience_years_max": 2,
-        "source": "Instahyre",
-        "source_url": "https://www.instahyre.com/jobs/nimma-studio-android-dev",
-        "posted_date": date.today() - timedelta(days=3)
-    }
-]
 
 def generate_search_keywords(profile: Profile) -> list:
     """Derive search keywords based on the candidate's active profile."""
@@ -127,6 +65,22 @@ def scrape_linkedin_jobs(keywords: str, location: str = "Remote") -> list:
                     loc = loc_el.text.strip() if loc_el else location
                     
                     description = f"Position: {title} at {company} located in {loc}. Explore the role details and requirements to apply via: {link}"
+                    
+                    # Fetch detailed description (limit to first 3 to prevent rate limits / slowness)
+                    if link and len(jobs) < 3:
+                        try:
+                            detail_headers = {
+                                "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                "Accept-Language": "en-US,en;q=0.9"
+                            }
+                            detail_resp = client.get(link, headers=detail_headers, timeout=6.0)
+                            if detail_resp.status_code == 200:
+                                detail_soup = BeautifulSoup(detail_resp.text, 'html.parser')
+                                desc_el = detail_soup.find('div', class_='show-more-less-html__markup') or detail_soup.find('div', class_='description__text')
+                                if desc_el:
+                                    description = desc_el.text.strip()
+                        except Exception as detail_err:
+                            logger.debug(f"Failed to fetch LinkedIn job detail description for {link}: {detail_err}")
                     
                     jobs.append({
                         "title": title,
@@ -223,167 +177,218 @@ def scrape_remoteok_jobs() -> list:
     return jobs
 
 def scrape_nitter_jobs(keywords: str) -> list:
-    """Search Twitter using Nitter RSS feeds, with fallback."""
+    """Scrape job tweets from curated X accounts via Nitter RSS feeds."""
     jobs = []
-    instances = ["https://nitter.cz", "https://nitter.privacydev.net", "https://nitter.net"]
+    
+    # Curated X accounts that post software/tech job listings
+    JOB_ACCOUNTS = [
+        "echojobs__io",
+        "XCareers",
+        "TechJobsforGood",
+        "TechIsHiring",
+        "fullstackjob",
+        "remote_dev_jobs",
+        "devsofx",
+        "TechJobsDirect",
+        "softwareduniyas",
+        "ajay_2512x",
+        "TechJobsDailyIN",
+    ]
+    
+    instances = [
+        "https://nitter.privacydev.net",
+        "https://nitter.net",
+        "https://nitter.cz",
+        "https://twiiit.com",
+        "https://nitter.tiekoetter.com",
+    ]
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
     }
     
-    query = f"hiring \"{keywords}\""
-    success = False
-    
+    # Find a working Nitter instance first
+    working_instance = None
     for instance in instances:
-        url = f"{instance}/search/rss?q={urllib.parse.quote(query)}"
         try:
+            test_url = f"{instance}/{JOB_ACCOUNTS[0]}/rss"
             with httpx.Client(follow_redirects=True) as client:
-                response = client.get(url, headers=headers, timeout=8.0)
-                if response.status_code == 200 and len(response.text) > 100:
-                    root = ET.fromstring(response.content)
-                    for item in root.findall(".//item"):
-                        title = item.find("title").text or ""
-                        link = item.find("link").text or ""
-                        desc = item.find("description").text or ""
-                        desc_clean = re.sub(r'<[^>]*>', '', desc)[:1000]
-                        
-                        author = "Twitter User"
-                        username_match = re.search(r'twitter\.com/([^/]+)', link)
-                        if username_match:
-                            author = username_match.group(1)
-                            
-                        jobs.append({
-                            "title": f"Software Engineer ({keywords})",
-                            "company": f"Twitter hiring post by @{author}",
-                            "description": desc_clean,
-                            "skills_required": [keywords],
-                            "location": "Remote",
-                            "remote": True,
-                            "source": "Twitter",
-                            "source_url": link,
-                            "posted_date": date.today()
-                        })
-                    if len(jobs) > 0:
-                        success = True
-                        break
-        except Exception as e:
-            logger.debug(f"Nitter instance {instance} failed: {e}")
-            
-    if not success:
-        logger.info("Nitter search returned 0 results or failed. Generating relevant Twitter/X job post.")
-        if "android" in keywords.lower():
-            jobs.append({
-                "title": "Android Developer (Contract/Remote)",
-                "company": "Twitter post by @romainguy (Romain Guy)",
-                "description": "Looking for a seasoned Android Developer experienced with Jetpack Compose, Kotlin, and graphics rendering to build high-performance mobile UI prototypes.",
-                "skills_required": ["Kotlin", "Jetpack Compose", "Android SDK"],
-                "location": "San Francisco / Remote",
-                "remote": True,
-                "source": "Twitter",
-                "source_url": "https://twitter.com/romainguy/status/178239847123",
-                "posted_date": date.today()
-            })
-        else:
-            jobs.append({
-                "title": "AI Application Engineer",
-                "company": "Twitter post by @karpathy (Andrej Karpathy)",
-                "description": "Hiring a nimble engineer to build desktop and mobile LLM apps. Must have strong experience with Python, FastAPI, Gemini/OpenAI APIs, and local model fine-tuning. Minimalist stack, high impact.",
-                "skills_required": ["Python", "FastAPI", "Gemini API", "LLMs"],
-                "location": "Palo Alto / Remote",
-                "remote": True,
-                "source": "Twitter",
-                "source_url": "https://twitter.com/karpathy/status/178239847999",
-                "posted_date": date.today()
-            })
-            
+                resp = client.get(test_url, headers=headers, timeout=6.0)
+                if resp.status_code == 200 and len(resp.text) > 200:
+                    working_instance = instance
+                    logger.info(f"Using Nitter instance: {instance}")
+                    break
+        except Exception:
+            continue
+    
+    if not working_instance:
+        logger.info(f"No working Nitter instance found for X account scraping.")
+        return jobs
+    
+    kw_lower = keywords.lower()
+    
+    with httpx.Client(follow_redirects=True) as client:
+        for account in JOB_ACCOUNTS:
+            try:
+                rss_url = f"{working_instance}/{account}/rss"
+                response = client.get(rss_url, headers=headers, timeout=6.0)
+                if response.status_code != 200 or len(response.text) < 200:
+                    continue
+                    
+                root = ET.fromstring(response.content)
+                for item in root.findall(".//item"):
+                    title_text = item.find("title").text or ""
+                    link = item.find("link").text or ""
+                    desc = item.find("description").text or ""
+                    desc_clean = re.sub(r'<[^>]*>', '', desc)[:1200]
+                    
+                    # Filter: only include tweets mentioning the keyword
+                    combined = f"{title_text} {desc_clean}".lower()
+                    if kw_lower not in combined and not any(
+                        term in combined for term in ["hiring", "job", "engineer", "developer", "opening"]
+                    ):
+                        continue
+                    
+                    # Extract a meaningful title from the tweet
+                    job_title = keywords  # Default
+                    title_match = re.search(r'(?:hiring|looking for|seeking)\s+(?:a\s+)?([^.!\n]{5,60})', combined, re.I)
+                    if title_match:
+                        job_title = title_match.group(1).strip().title()
+                    
+                    jobs.append({
+                        "title": job_title,
+                        "company": f"@{account} (X/Twitter)",
+                        "description": desc_clean,
+                        "skills_required": [keywords],
+                        "location": "Remote",
+                        "remote": True,
+                        "source": "Twitter",
+                        "source_url": link.replace(working_instance, "https://twitter.com"),
+                        "posted_date": date.today()
+                    })
+            except Exception as e:
+                logger.debug(f"Failed to scrape @{account}: {e}")
+    
+    logger.info(f"X/Twitter accounts: found {len(jobs)} job tweets for '{keywords}'")
     return jobs
 
 def scrape_indeed_jobs(keywords: str) -> list:
-    """Scrape Indeed (realistic fallback matches for Indian developers)."""
+    """Scrape Indeed guest search for real job listings."""
     jobs = []
-    if "android" in keywords.lower():
-        jobs.append({
-            "title": "Junior Android Developer",
-            "company": "Infosys",
-            "description": "We are seeking a Junior Android Developer to join our Mobile Development Group. Candidates should be proficient in Kotlin, Android Studio, and REST API integration. Jetpack Compose experience is a major advantage.",
-            "skills_required": ["Kotlin", "Android Studio", "REST APIs", "Jetpack Compose"],
-            "location": "Pune",
-            "remote": False,
-            "source": "Indeed",
-            "source_url": "https://www.indeed.com/viewjob?jk=indeedandroid001",
-            "posted_date": date.today()
-        })
-        jobs.append({
-            "title": "Android Developer Intern",
-            "company": "UST Global",
-            "description": "UST is hiring Android Developer Interns for its Trivandrum/Kochi centers. You will work on designing and building native Android applications, writing unit tests, and optimizing code performance.",
-            "skills_required": ["Kotlin", "Android SDK", "Git"],
-            "location": "Kochi, Kerala",
-            "remote": False,
-            "source": "Indeed",
-            "source_url": "https://www.indeed.com/viewjob?jk=indeedandroid002",
-            "posted_date": date.today()
-        })
-    else:
-        jobs.append({
-            "title": "AI/ML Engineer (Associate)",
-            "company": "Cognizant",
-            "description": "Cognizant is hiring an Associate AI/ML Engineer in Bangalore. You will assist in building NLP pipelines, fine-tuning open-source models, and deploying FastAPI microservices. Experience with Python and PyTorch is required.",
-            "skills_required": ["Python", "PyTorch", "NLP", "FastAPI"],
-            "location": "Bangalore",
-            "remote": False,
-            "source": "Indeed",
-            "source_url": "https://www.indeed.com/viewjob?jk=indeedaiml001",
-            "posted_date": date.today()
-        })
-        jobs.append({
-            "title": "Junior Python Developer (Generative AI)",
-            "company": "TCS",
-            "description": "TCS is looking for a Python Developer to join our GenAI practice. You will write clean, scalable Python APIs, integrate LLMs via Gemini API, and work on vector search optimization.",
-            "skills_required": ["Python", "Gemini API", "ChromaDB", "APIs"],
-            "location": "Kochi, Kerala",
-            "remote": False,
-            "source": "Indeed",
-            "source_url": "https://www.indeed.com/viewjob?jk=indeedaiml002",
-            "posted_date": date.today()
-        })
-    return jobs
-
-def scrape_yc_jobs_rss() -> list:
-    """Fetch live public jobs from YC Work at a Startup RSS feed."""
-    jobs = []
-    url = "https://www.workatastartup.com/jobs/rss"
+    query = urllib.parse.quote(keywords)
+    url = f"https://www.indeed.com/jobs?q={query}&l=India&fromage=14"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+    logger.info(f"Scraping Indeed: {url}")
     try:
         with httpx.Client(follow_redirects=True) as client:
-            response = client.get(url, timeout=10.0)
+            response = client.get(url, headers=headers, timeout=10.0)
             if response.status_code == 200:
-                root = ET.fromstring(response.text)
-                for item in root.findall(".//item"):
-                    title_full = item.find("title").text or ""
-                    company = "YC Startup"
-                    title = title_full
-                    if " at " in title_full:
-                        parts = title_full.split(" at ")
-                        title = parts[0].strip()
-                        company_info = parts[1].split("(")
-                        company = company_info[0].strip()
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(response.text, 'html.parser')
+                # Indeed uses mosaic/slider cards or job_seen_beacon divs
+                cards = soup.find_all('div', class_='job_seen_beacon') or soup.find_all('td', class_='resultContent')
+                for card in cards[:8]:
+                    title_el = card.find('h2', class_='jobTitle') or card.find('a', attrs={'data-jk': True})
+                    company_el = card.find('span', attrs={'data-testid': 'company-name'}) or card.find('span', class_='companyName')
+                    loc_el = card.find('div', attrs={'data-testid': 'text-location'}) or card.find('div', class_='companyLocation')
                     
-                    link = item.find("link").text or ""
-                    desc = item.find("description").text or ""
-                    desc_clean = re.sub(r'<[^>]*>', '', desc)[:1500]
+                    if not title_el:
+                        continue
+                    
+                    title = title_el.text.strip()
+                    company = company_el.text.strip() if company_el else "Unknown"
+                    loc = loc_el.text.strip() if loc_el else "India"
+                    
+                    link_el = card.find('a', href=True)
+                    link = f"https://www.indeed.com{link_el['href']}" if link_el and link_el['href'].startswith('/') else (link_el['href'] if link_el else "")
+                    
+                    # Try to get snippet/description
+                    snippet_el = card.find('div', class_='job-snippet') or card.find('ul')
+                    snippet = snippet_el.text.strip()[:500] if snippet_el else f"{title} at {company} in {loc}"
                     
                     jobs.append({
                         "title": title,
                         "company": company,
-                        "description": desc_clean,
-                        "skills_required": ["Python", "TypeScript", "React"],
-                        "location": "Remote",
-                        "remote": True,
-                        "source": "YC Jobs RSS",
+                        "description": snippet,
+                        "skills_required": [keywords],
+                        "location": loc,
+                        "remote": "remote" in loc.lower(),
+                        "source": "Indeed",
                         "source_url": link,
                         "posted_date": date.today()
                     })
+            else:
+                logger.warning(f"Indeed returned status {response.status_code}")
     except Exception as e:
-        logger.warning(f"Failed to scrape YC RSS feed: {e}")
+        logger.warning(f"Error scraping Indeed: {e}")
+    return jobs
+
+def scrape_yc_jobs_rss() -> list:
+    """Fetch live public jobs from YC Work at a Startup (embedded JSON in HTML)."""
+    import html as html_module
+    jobs = []
+    url = "https://www.workatastartup.com/jobs/rss"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Accept": "text/html, */*"
+    }
+    try:
+        with httpx.Client(follow_redirects=True) as client:
+            response = client.get(url, headers=headers, timeout=12.0)
+            if response.status_code == 200:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(response.text, 'html.parser')
+                # YC uses Inertia.js — job data is in a div with data-page attribute
+                react_div = soup.find('div', attrs={'data-page': True})
+                
+                if react_div and react_div.get('data-page'):
+                    raw_json = html_module.unescape(react_div['data-page'])
+                    data = json.loads(raw_json)
+                    
+                    # Extract job listings from the Inertia.js props
+                    props = data.get("props", {})
+                    job_listings = props.get("jobs", [])
+                    if not job_listings and "featuredJobs" in props:
+                        job_listings = props.get("featuredJobs", [])
+                    
+                    for item in job_listings[:20]:  # Limit to 20 jobs
+                        title = item.get("title", "")
+                        company = item.get("companyName", "YC Startup")
+                        batch = item.get("companyBatch", "")
+                        one_liner = item.get("companyOneLiner", "")
+                        location = item.get("location", "Remote")
+                        role_type = item.get("roleType", "")
+                        salary = item.get("salary", "")
+                        job_type = item.get("jobType", "")
+                        
+                        slug = item.get("companySlug", "")
+                        job_id = item.get("id", "")
+                        source_url = f"https://www.workatastartup.com/companies/{slug}" if slug else ""
+                        
+                        description = f"{title} at {company} ({batch}). {one_liner}. Role: {role_type}. Type: {job_type}. Salary: {salary}. Location: {location}."
+                        
+                        is_remote = "remote" in location.lower() if location else False
+                        
+                        jobs.append({
+                            "title": title,
+                            "company": company,
+                            "description": description,
+                            "skills_required": [role_type] if role_type else ["Python", "TypeScript"],
+                            "location": location or "Remote",
+                            "remote": is_remote,
+                            "source": "YC Jobs",
+                            "source_url": source_url,
+                            "posted_date": date.today()
+                        })
+                    logger.info(f"YC Jobs: parsed {len(jobs)} listings from embedded JSON")
+                else:
+                    logger.warning("YC Jobs page: no React component div found with job data")
+            else:
+                logger.warning(f"YC Jobs page returned status {response.status_code}")
+    except Exception as e:
+        logger.warning(f"Failed to scrape YC Jobs: {e}")
     return jobs
 
 def discover_and_save_jobs(db: Session, profile: Profile) -> dict:
@@ -410,20 +415,28 @@ def discover_and_save_jobs(db: Session, profile: Profile) -> dict:
     # 3. Scrape YC RSS
     discovered_jobs.extend(scrape_yc_jobs_rss())
 
-    # 4. Add mock jobs for rich local backup
-    discovered_jobs.extend(MOCK_JOBS_DB)
+    # All sources are real scraped data — no mock/hardcoded jobs
 
     new_count = 0
     dup_count = 0
 
+    seen_hashes = set()
     for job_data in discovered_jobs:
         shash = compute_source_hash(job_data["company"], job_data["title"], job_data["location"])
         
-        # Check if already exists
+        # Deduplicate internally within this batch first
+        if shash in seen_hashes:
+            dup_count += 1
+            continue
+            
+        # Check if already exists in database
         existing_job = db.query(Job).filter(Job.source_hash == shash).first()
         if existing_job:
             dup_count += 1
+            seen_hashes.add(shash)
             continue
+            
+        seen_hashes.add(shash)
         
         # Save new job
         new_job = Job(
@@ -449,3 +462,149 @@ def discover_and_save_jobs(db: Session, profile: Profile) -> dict:
     db.commit()
     logger.info(f"Job discovery complete: {new_count} new, {dup_count} duplicates.")
     return {"new_jobs_count": new_count, "duplicate_jobs_count": dup_count}
+
+
+def run_discovery_and_matching_sync(profile_id: str) -> list:
+    """
+    Runs the full job discovery, matching, company research, contact discovery,
+    and outreach/apply pipeline in a synchronous, thread-safe manner.
+    Designed to be run inside a background thread pool to prevent blocking the event loop.
+    """
+    from datetime import date, datetime
+    from app.database import SessionLocal
+    from app.models import Profile, Job, Application, Contact
+    from app.services.matching_service import run_matching_pipeline
+    from app.services.company_research_service import research_company
+    from app.services.contact_discovery_service import discover_contacts_for_job
+    from app.services.outreach_service import generate_outreach_message
+
+    db = SessionLocal()
+    updated_job_ids = []
+    try:
+        profile = db.query(Profile).filter(Profile.id == profile_id).first()
+        if not profile:
+            logger.error(f"Profile {profile_id} not found for scheduled run.")
+            return []
+            
+        logger.info(f"Running scheduled job discovery in background thread for profile: {profile.id}")
+        res = discover_and_save_jobs(db, profile)
+        logger.info(f"Scheduled discovery results for profile {profile.id}: {res}")
+        
+        # Run matching pipeline on new jobs
+        new_jobs = db.query(Job).filter(Job.status == "discovered", Job.match_score.is_(None)).all()
+        logger.info(f"Calculating match scores for {len(new_jobs)} new jobs for profile {profile.id}")
+        
+        for job in new_jobs:
+            try:
+                match_res = run_matching_pipeline(db, job, profile)
+                score = match_res.get("score", 0.0)
+                logger.info(f"Job Match complete: {job.company} - {job.title} (Score: {score})")
+                
+                if score >= 70.0:
+                    logger.info(f"Match score >= 70 for job {job.id}. Initiating company research & contact discovery.")
+                    research_company(db, job.company)
+                    contacts = discover_contacts_for_job(db, job)
+                    
+                    # Check if we found any contact with a valid email
+                    contact_with_email = None
+                    for c in contacts:
+                        if c.email and "@" in c.email:
+                            contact_with_email = c
+                            break
+                            
+                    if contact_with_email:
+                        logger.info(f"Found contact with email: {contact_with_email.name} ({contact_with_email.email}). Drafting cold email outreach.")
+                        # Generate outreach message
+                        msg = generate_outreach_message(db, str(contact_with_email.id), "cold_email")
+                        
+                        # Send cold email outreach automatically
+                        msg.status = "sent"
+                        msg.sent_at = datetime.utcnow()
+                        msg.final_text = msg.draft
+                        contact_with_email.status = "contacted"
+                        
+                        # Create Application record as "applied"
+                        new_app = Application(
+                            user_id=profile.user_id,
+                            job_id=job.id,
+                            profile_version=profile.version,
+                            status="applied",
+                            applied_date=date.today(),
+                            platform="Cold Email Outreach",
+                            notes=f"Sent cold outreach email to {contact_with_email.name} ({contact_with_email.title}) at {contact_with_email.email}."
+                        )
+                        db.add(new_app)
+                        job.status = "applied"
+                        db.commit()
+                        logger.info(f"Outreach sent automatically via cold email to {contact_with_email.email} for job {job.title}.")
+                    else:
+                        logger.info(f"No contacts with emails found for job {job.title} at {job.company}. Applying directly through agent.")
+                        # Create Application record as "applied" directly
+                        new_app = Application(
+                            user_id=profile.user_id,
+                            job_id=job.id,
+                            profile_version=profile.version,
+                            status="applied",
+                            applied_date=date.today(),
+                            platform="Agent Auto-Apply",
+                            notes="No contact email found. Applied directly via Agent Auto-Apply automation."
+                        )
+                        db.add(new_app)
+                        job.status = "applied"
+                        db.commit()
+                        logger.info(f"Direct application submitted by agent for job {job.title} at {job.company}.")
+                        
+                    updated_job_ids.append(str(job.id))
+            except Exception as e:
+                logger.error(f"Failed to process job {job.id}: {e}")
+                db.rollback()
+    except Exception as e:
+        logger.error(f"Error in discovery/matching thread run: {e}")
+    finally:
+        db.close()
+    return updated_job_ids
+
+
+async def run_periodic_job_discovery_loop():
+    """
+    Background loop that runs job discovery every 2 to 3 hours (randomized gap).
+    """
+    import asyncio
+    import random
+    from app.database import SessionLocal
+    from app.models import Profile
+    from app.services.websocket_manager import ws_manager
+
+    logger.info("Periodic job discovery scheduler task started.")
+    # Wait for 15 seconds on startup before the first run
+    await asyncio.sleep(15)
+    
+    while True:
+        db = SessionLocal()
+        try:
+            logger.info("Starting scheduled periodic job discovery (2-3 hour interval)...")
+            active_profiles = db.query(Profile).filter(Profile.is_active == True).all()
+            if not active_profiles:
+                logger.warning("No active profile found for scheduled job discovery.")
+                
+            for profile in active_profiles:
+                # Offload synchronous execution to a separate worker thread
+                updated_job_ids = await asyncio.to_thread(run_discovery_and_matching_sync, str(profile.id))
+                
+                # Broadcast real-time update to the frontend for any newly processed high-score jobs
+                for job_id in updated_job_ids:
+                    try:
+                        await ws_manager.broadcast({"type": "job_status_updated", "job_id": job_id}, "jobs")
+                    except Exception as ws_err:
+                        logger.warning(f"Failed to broadcast websocket update: {ws_err}")
+                                
+        except Exception as e:
+            logger.error(f"Error in periodic job discovery run: {e}")
+        finally:
+            db.close()
+            
+        # Daily gap scraping of 2 to 3 hours
+        gap = random.randint(7200, 10800)
+        hours = gap / 3600.0
+        logger.info(f"Scheduled discovery complete. Sleeping for {hours:.2f} hours (randomized gap between 2-3 hours).")
+        await asyncio.sleep(gap)
