@@ -34,7 +34,9 @@ const JobsPage: React.FC = () => {
     applications,
     createApplication,
     messages,
-    recalculateMatch
+    recalculateMatch,
+    showRemote,
+    setShowRemote
   } = useApp();
 
   const [search, setSearch] = useState("");
@@ -73,7 +75,8 @@ const JobsPage: React.FC = () => {
     const matchesSearch = job.title.toLowerCase().includes(search.toLowerCase()) || 
                           job.company.toLowerCase().includes(search.toLowerCase());
     const matchesScore = (job.match_score || 0) >= minMatch;
-    return matchesSearch && matchesScore;
+    const matchesRemote = showRemote || !job.remote;
+    return matchesSearch && matchesScore && matchesRemote;
   });
 
   const handleTrackJob = async (job: Job) => {
@@ -164,6 +167,22 @@ const JobsPage: React.FC = () => {
             onClick={() => setMinMatch(75)}
           >
             75%+ Match
+          </button>
+        </div>
+
+        <div className={styles.filterGroup}>
+          <span className={styles.filterLabel}>Remote:</span>
+          <button 
+            className={`${styles.filterBtn} ${showRemote ? styles.activeFilter : ""}`}
+            onClick={() => setShowRemote(true)}
+          >
+            All Jobs
+          </button>
+          <button 
+            className={`${styles.filterBtn} ${!showRemote ? styles.activeFilter : ""}`}
+            onClick={() => setShowRemote(false)}
+          >
+            Exclude Remote
           </button>
         </div>
       </div>

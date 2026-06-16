@@ -131,6 +131,7 @@ async def list_jobs(
     status: Optional[str] = None,
     min_score: Optional[float] = None,
     company: Optional[str] = None,
+    remote: Optional[bool] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -141,6 +142,8 @@ async def list_jobs(
         query = query.filter(Job.match_score >= min_score)
     if company:
         query = query.filter(Job.company.ilike(f"%{company}%"))
+    if remote is not None:
+        query = query.filter(Job.remote == remote)
         
     return query.order_by(Job.match_score.desc()).all()
 

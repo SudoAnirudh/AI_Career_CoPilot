@@ -96,6 +96,8 @@ interface AppContextType {
   discovering: boolean;
   uploading: boolean;
   wsStatus: "connected" | "disconnected" | "connecting";
+  showRemote: boolean;
+  setShowRemote: (show: boolean) => void;
   refreshAll: () => Promise<void>;
   uploadResume: (file: File) => Promise<Profile>;
   syncResumeFromDrive: () => Promise<Profile>;
@@ -138,6 +140,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [wsStatus, setWsStatus] = useState<"connected" | "disconnected" | "connecting">("connecting");
+  const [showRemote, setShowRemote] = useState(true);
 
   // Get Auth headers
   const getHeaders = useCallback(() => {
@@ -463,6 +466,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         discovering,
         uploading,
         wsStatus,
+        showRemote,
+        setShowRemote,
         refreshAll,
         uploadResume,
         syncResumeFromDrive,

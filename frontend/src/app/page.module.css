@@ -320,3 +320,45 @@
     grid-template-columns: 1fr;
   }
 }
+
+.filterContainer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: -0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.filterLabel {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.filterBtn {
+  background: #ffffff;
+  border: 1px solid var(--panel-border);
+  color: var(--text-secondary);
+  padding: 0.3rem 0.65rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  transition: var(--transition-smooth);
+}
+
+.filterBtn:hover {
+  background: #f8fafc;
+  color: var(--text-primary);
+  border-color: var(--panel-border-hover);
+}
+
+.activeFilter {
+  background: var(--color-primary-glow);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}

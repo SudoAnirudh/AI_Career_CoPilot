@@ -23,14 +23,17 @@ const Dashboard: React.FC = () => {
     activeProfile, 
     skillGaps,
     discoverJobs,
-    discovering
+    discovering,
+    showRemote,
+    setShowRemote
   } = useApp();
 
   const [discoveryStarted, setDiscoveryStarted] = useState(false);
 
   // Statistics
-  const totalDiscovered = jobs.length;
-  const highMatches = jobs.filter(j => (j.match_score || 0) >= 75).length;
+  const filteredJobs = jobs.filter(j => showRemote || !j.remote);
+  const totalDiscovered = filteredJobs.length;
+  const highMatches = filteredJobs.filter(j => (j.match_score || 0) >= 75).length;
   const activeApplications = applications.filter(a => a.status !== "rejected" && a.status !== "offer").length;
   const sentOutreach = messages.filter(m => m.status === "sent").length;
 
@@ -121,15 +124,31 @@ const Dashboard: React.FC = () => {
             </button>
           </div>
 
+          <div className={styles.filterContainer}>
+            <span className={styles.filterLabel}>Remote Opportunities:</span>
+            <button 
+              className={`${styles.filterBtn} ${showRemote ? styles.activeFilter : ""}`}
+              onClick={() => setShowRemote(true)}
+            >
+              Enabled
+            </button>
+            <button 
+              className={`${styles.filterBtn} ${!showRemote ? styles.activeFilter : ""}`}
+              onClick={() => setShowRemote(false)}
+            >
+              Disabled
+            </button>
+          </div>
+
           <div className={styles.jobsList}>
-            {jobs.length === 0 ? (
+            {filteredJobs.length === 0 ? (
               <div className={styles.emptyState}>
                 <Briefcase size={48} className={styles.emptyIcon} />
                 <h3>No jobs found yet</h3>
                 <p>Upload your resume first, then click "Scan for Jobs" to spin up discovery agents.</p>
               </div>
             ) : (
-              jobs.slice(0, 4).map((job) => {
+              filteredJobs.slice(0, 4).map((job) => {
                 const isHighMatch = (job.match_score || 0) >= 75;
                 const scoreColor = isHighMatch ? "var(--score-high)" : "var(--score-medium)";
                 return (

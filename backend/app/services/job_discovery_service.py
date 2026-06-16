@@ -211,9 +211,9 @@ def scrape_nitter_jobs(keywords: str) -> list:
     for instance in instances:
         try:
             test_url = f"{instance}/{JOB_ACCOUNTS[0]}/rss"
-            with httpx.Client(follow_redirects=True) as client:
+            with httpx.Client(follow_redirects=True, verify=False) as client:
                 resp = client.get(test_url, headers=headers, timeout=6.0)
-                if resp.status_code == 200 and len(resp.text) > 200:
+                if resp.status_code == 200 and len(resp.text) > 200 and "Forbidden" not in resp.text:
                     working_instance = instance
                     logger.info(f"Using Nitter instance: {instance}")
                     break
@@ -226,7 +226,7 @@ def scrape_nitter_jobs(keywords: str) -> list:
     
     kw_lower = keywords.lower()
     
-    with httpx.Client(follow_redirects=True) as client:
+    with httpx.Client(follow_redirects=True, verify=False) as client:
         for account in JOB_ACCOUNTS:
             try:
                 rss_url = f"{working_instance}/{account}/rss"
