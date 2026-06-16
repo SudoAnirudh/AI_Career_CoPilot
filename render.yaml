@@ -1,0 +1,105 @@
+services:
+  # 1. FastAPI Backend Web Service
+  - type: web
+    name: copilot-backend
+    env: docker
+    dockerContext: backend
+    dockerfilePath: Dockerfile
+    plan: starter # Starter plan is recommended for memory/cpu limits
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: copilot-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromRedis:
+          name: copilot-redis
+          property: connectionString
+      - key: CHROMA_PERSIST_DIR
+        value: /opt/render/project/src/chroma_db
+      - key: DEV_AUTH_BYPASS
+        value: "false"
+      - key: PORT
+        value: "8000"
+      - key: HOST
+        value: "0.0.0.0"
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+    disk:
+      name: chroma-storage
+      mountPath: /opt/render/project/src/chroma_db
+      sizeGB: 10
+
+  # 2. Celery Worker (Background Worker Service)
+  - type: worker
+    name: copilot-celery-worker
+    env: docker
+    dockerContext: backend
+    dockerfilePath: Dockerfile
+    plan: starter
+    startCommand: celery -A app.worker.celery_app worker --loglevel=info
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: copilot-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromRedis:
+          name: copilot-redis
+          property: connectionString
+      - key: CHROMA_PERSIST_DIR
+        value: /opt/render/project/src/chroma_db
+      - key: NVIDIA_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+    disk:
+      name: chroma-storage-worker
+      mountPath: /opt/render/project/src/chroma_db
+      sizeGB: 10
+
+  # 3. Next.js Frontend Web Service
+  - type: web
+    name: copilot-frontend
+    env: node
+    plan: starter
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://copilot-backend.onrender.com/api/v1 # Update to your actual backend URL once deployed
+      - key: NEXT_PUBLIC_WS_URL
+        value: wss://copilot-backend.onrender.com/ws # Update to your actual backend WS URL once deployed
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        sync: false
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        sync: false
+
+# Managed Databases
+databases:
+  - name: copilot-postgres
+    databaseName: career_copilot
+    user: postgres
+    plan: starter
+
+# Managed Redis
+interfaces:
+  - type: redis
+    name: copilot-redis
+    plan: starter
