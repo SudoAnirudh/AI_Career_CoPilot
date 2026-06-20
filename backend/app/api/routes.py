@@ -327,7 +327,7 @@ async def send_outreach_message(
     if not msg:
         raise HTTPException(status_code=404, detail="Message draft not found")
         
-o     contact = db.query(Contact).filter(Contact.id == msg.contact_id).first()
+    contact = db.query(Contact).filter(Contact.id == msg.contact_id).first()
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found for this message")
         
