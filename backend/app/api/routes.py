@@ -327,36 +327,81 @@ async def send_outreach_message(
     if not msg:
         raise HTTPException(status_code=404, detail="Message draft not found")
         
-    # Mock sending via Gmail API
-    logger.info(f"Sending message {message_id} to contact.")
-    
+o     contact = db.query(Contact).filter(Contact.id == msg.contact_id).first()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found for this message")
+        
+    if not contact.email:
+        raise HTTPException(status_code=400, detail="Contact does not have an email address. Cannot send outreach email.")
+
+    # Parse Subject line and Body from msg.draft
+    subject = "AI Career CoPilot Outreach"
+    body = msg.draft
+    if "subject:" in msg.draft.lower():
+        lines = msg.draft.split("\n")
+        for line in lines:
+            if line.lower().startswith("subject:"):
+                subject = line[8:].strip()
+                body = msg.draft.replace(line, "", 1).strip()
+                break
+
+    # Check if SMTP is configured
+    if not settings.SMTP_USERNAME or not settings.SMTP_PASSWORD:
+        raise HTTPException(
+            status_code=400,
+            detail="SMTP credentials are not configured. Please add SMTP_USERNAME and SMTP_PASSWORD to your backend .env file to send real emails."
+        )
+
     # Check if there is an active profile with a resume PDF
     active_profile = db.query(Profile).filter(Profile.user_id == current_user.id, Profile.is_active == True).first()
-    if active_profile and active_profile.resume_url:
-        if active_profile.resume_url.startswith("/static/resumes/"):
-            import os
-            # Resolve physical file path: app/static/resumes/{profile_id}.pdf
-            static_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            rel_path = active_profile.resume_url.lstrip("/")
-            full_path = os.path.join(static_dir, rel_path)
-            if os.path.exists(full_path):
-                logger.info(f"Attached resume PDF file: {full_path} to cold outreach email.")
-            else:
-                logger.warning(f"Resume PDF url is {active_profile.resume_url} but file does not exist at {full_path}.")
-        else:
-            logger.info(f"Attached resume URL/filename: {active_profile.resume_url} to cold outreach email.")
-    else:
-        logger.info("No resume attached (no active profile or resume found).")
+    
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.application import MIMEApplication
+    import os
+
+    try:
+        email_msg = MIMEMultipart()
+        email_msg["From"] = settings.SMTP_FROM_EMAIL or settings.SMTP_USERNAME
+        email_msg["To"] = contact.email
+        email_msg["Subject"] = subject
         
+        email_msg.attach(MIMEText(body, "plain"))
+        
+        # Attach resume PDF if present
+        if active_profile and active_profile.resume_url:
+            if active_profile.resume_url.startswith("/static/resumes/"):
+                static_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                rel_path = active_profile.resume_url.lstrip("/")
+                full_path = os.path.join(static_dir, rel_path)
+                if os.path.exists(full_path):
+                    with open(full_path, "rb") as f:
+                        part = MIMEApplication(f.read(), Name=os.path.basename(full_path))
+                        part['Content-Disposition'] = f'attachment; filename="{os.path.basename(full_path)}"'
+                        email_msg.attach(part)
+            else:
+                pass
+                
+        # Send via SMTP
+        with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT) as server:
+            server.starttls()
+            server.login(settings.SMTP_USERNAME, settings.SMTP_PASSWORD)
+            server.send_message(email_msg)
+            
+        logger.info(f"Email successfully sent to {contact.email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {contact.email}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to send email via SMTP: {e}"
+        )
+
     msg.status = "sent"
     msg.sent_at = datetime.utcnow()
     msg.final_text = msg.draft
+    contact.status = "contacted"
     
-    # Update associated contact status
-    contact = db.query(Contact).filter(Contact.id == msg.contact_id).first()
-    if contact:
-        contact.status = "contacted"
-        
     # Update associated application status
     if msg.job_id:
         app = db.query(Application).filter(
