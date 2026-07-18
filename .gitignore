@@ -48,6 +48,7 @@ pnpm-debug.log*
 # Local brain agent logs and test scripts
 brain/
 
-#Markdown Files
+# Markdown Files
 DEPLOYMENT.md
 AI_Career_Copilot_PRD_v2.md
+
