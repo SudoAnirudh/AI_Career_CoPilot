@@ -229,6 +229,17 @@ This starts PostgreSQL on port `5439` and Redis on port `6389` (to avoid ports c
 
 ---
 
+## 📖 Detailed Documentation Index
+
+For in-depth explanations of specific areas of the codebase, refer to the documents in the `docs/` folder:
+
+*   **[System Architecture](docs/architecture.md)**: Detailed multi-tier layouts, sequence diagrams, and client-server communication channels.
+*   **[Data & AI Models](docs/models_and_database.md)**: Relational Postgres tables, validation schemas (Pydantic v2), and configurations for NVIDIA NIM and Gemini models.
+*   **[Workflows & Agent Systems](docs/workflows_and_agents.md)**: In-depth workflow diagrams for all 7 agents, background tasks configuration, and the mathematical matching formula equations.
+*   **[Tech Stack & Configurations](docs/tech_stack.md)**: Complete mapping of frontend (Next.js 16) and backend (FastAPI) dependencies.
+
+---
+
 ## ☁️ Deployment
 
 For detailed configurations on how to deploy this stack to production using Docker Compose, Render Blueprints, or hybrid Vercel/Supabase/Railway configurations, consult the [Deployment Guide](DEPLOYMENT.md).
